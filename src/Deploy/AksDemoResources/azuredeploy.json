@@ -1,0 +1,115 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    /* redis parameters */
+    "RedisCachePrefix": {
+      "type": "string",
+      "minLength": 1,
+      "defaultValue": "composedemoredis"
+    },
+    "RedisCacheSKUName": {
+      "type": "string",
+      "allowedValues": [
+        "Basic",
+        "Standard"
+      ],
+      "defaultValue": "Basic"
+    },
+    "RedisCacheSKUFamily": {
+      "type": "string",
+      "allowedValues": [
+        "C"
+      ],
+      "defaultValue": "C"
+    },
+    "RedisCacheSKUCapacity": {
+      "type": "int",
+      "allowedValues": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "defaultValue": 0
+    },
+    "RedisCacheRedisVersion": {
+      "type": "string",
+      "allowedValues": [
+        "2.8"
+      ],
+      "defaultValue": "2.8"
+    },
+    /* cosmosdb parameters */
+    "apiType": {
+      "type": "string",
+      "metadata": {
+        "description": "The Azure Cosmos DB API type, by default Cassandra; otherwise one of Gremlin, MongoDB, SQL, or Table"
+      },
+      "allowedValues": [
+        "Cassandra",
+        "Gremlin",
+        "MongoDB",
+        "SQL",
+        "Table"
+      ],
+      "defaultValue": "MongoDB"
+    },
+    "databaseAccountPrefix": {
+      "type": "string",
+      "metadata": {
+        "description": "The Azure Cosmos DB account prefix."
+      },
+      "defaultValue": "composedemodb"
+    }
+  },
+  "variables": {
+    "RedisCacheName": "[concat(parameters('RedisCachePrefix'), uniqueString(resourceGroup().id))]",
+    "CosmosDbName": "[concat(parameters('databaseAccountPrefix'), uniqueString(resourceGroup().id))]",
+    "CosmosDbOfferType": "Standard"
+  },
+  "resources": [
+    {
+      "name": "[variables('RedisCacheName')]",
+      "type": "Microsoft.Cache/Redis",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "2016-04-01",
+      "dependsOn": [],
+      "tags": {
+        "displayName": "RedisCache"
+      },
+      "properties": {
+        "sku": {
+          "name": "[parameters('RedisCacheSKUName')]",
+          "family": "[parameters('RedisCacheSKUFamily')]",
+          "capacity": "[parameters('RedisCacheSKUCapacity')]"
+        },
+        "redisVersion": "[parameters('RedisCacheRedisVersion')]"
+      }
+    },
+    {
+      "apiVersion": "2015-04-08",
+      "type": "Microsoft.DocumentDB/databaseAccounts",
+      "kind": "[if(equals(parameters('apiType'), 'MongoDB'), 'MongoDB', 'GlobalDocumentDB')]",
+      "name": "[variables('CosmosDbName')]",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "name": "[variables('CosmosDbName')]",
+        "databaseAccountOfferType": "[variables('CosmosDbOfferType')]"
+      }
+    }
+  ],
+  "outputs": {
+    "redisConnectionString": {
+      "type": "string",
+      "value": "[concat(variables('RedisCacheName'),'.redis.cache.windows.net,abortConnect=false,ssl=true,password=', listKeys(resourceId('Microsoft.Cache/Redis', variables('RedisCacheName')), '2015-08-01').primaryKey)]"
+    },
+    "cosmosDbConnectionString": {
+      "type": "string",
+      "value": "[concat('mongodb://', variables('CosmosDbName'), ':', listKeys(resourceId('Microsoft.DocumentDb/databaseAccounts', variables('CosmosDbName')), '2015-04-08').primaryMasterKey, '@', variables('CosmosDbName'), '.documents.azure.com:10250/?ssl=true')]"
+    }
+  }
+}
