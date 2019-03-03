@@ -4,17 +4,17 @@ EXPOSE 80
 
 FROM microsoft/dotnet:2.1-sdk AS build
 WORKDIR /src
-COPY ["Frontend/Frontend.csproj", "Frontend/"]
+COPY ["Backend/Backend.csproj", "Backend/"]
 COPY ["Entities/Entities.csproj", "Entities/"]
-RUN dotnet restore "Frontend/Frontend.csproj"
+RUN dotnet restore "Backend/Backend.csproj"
 COPY . .
-WORKDIR "/src/Frontend"
-RUN dotnet build "Frontend.csproj" -c Release -o /app
+WORKDIR "/src/Backend"
+RUN dotnet build "Backend.csproj" -c Release -o /app
 
 FROM build AS publish
-RUN dotnet publish "Frontend.csproj" -c Release -o /app
+RUN dotnet publish "Backend.csproj" -c Release -o /app
 
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app .
-ENTRYPOINT ["dotnet", "Frontend.dll"]
+ENTRYPOINT ["dotnet", "Backend.dll"]
